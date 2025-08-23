@@ -5,6 +5,18 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+# Color-blind friendly palette
+COLOR_PALETTE = {
+    'primary': '#2E8B57',      # Sea Green
+    'secondary': '#DC143C',    # Crimson
+    'tertiary': '#4682B4',     # Steel Blue
+    'quaternary': '#FF8C00',   # Dark Orange
+    'background': '#F8F9FA',   # Light Gray
+    'text': '#2F3349'          # Dark Blue Gray
+}
+
+CATEGORICAL_COLORS = ['#2E8B57', '#DC143C', '#4682B4', '#FF8C00', '#9370DB', '#20B2AA']
 from utils.data import create_tenure_bins, get_churn_rate_by_segment
 from utils.model import (
     get_confusion_matrix_data, get_roc_curve_data, 

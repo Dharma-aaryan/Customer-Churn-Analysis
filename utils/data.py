@@ -186,3 +186,74 @@ def get_churn_rate_by_segment(df, segment_col):
     pandas Series: churn rates by segment
     """
     return df.groupby(segment_col)['Churn'].apply(lambda x: (x == 'Yes').mean() * 100)
+
+def get_data_dictionary(df):
+    """
+    Generate comprehensive data dictionary.
+    
+    Parameters:
+    df: pandas DataFrame
+    
+    Returns:
+    pandas DataFrame: data dictionary with feature info
+    """
+    data_dict = []
+    
+    for col in df.columns:
+        missing_pct = (df[col].isnull().sum() / len(df)) * 100
+        unique_count = df[col].nunique()
+        dtype = str(df[col].dtype)
+        
+        # Classify feature type
+        if df[col].dtype in ['object', 'category'] or col == 'SeniorCitizen':
+            feature_type = 'Categorical'
+        elif df[col].dtype in ['int64', 'float64']:
+            feature_type = 'Numerical'
+        else:
+            feature_type = 'Other'
+        
+        # Sample values
+        if feature_type == 'Categorical':
+            sample_values = ', '.join(df[col].value_counts().head(3).index.astype(str))
+        else:
+            sample_values = f"Range: {df[col].min():.2f} - {df[col].max():.2f}"
+        
+        data_dict.append({
+            'Feature': col,
+            'Type': feature_type,
+            'Data Type': dtype,
+            'Missing %': f"{missing_pct:.1f}%",
+            'Unique Values': unique_count,
+            'Sample/Range': sample_values
+        })
+    
+    return pd.DataFrame(data_dict)
+
+def validate_data_columns(df, required_columns):
+    """
+    Validate that required columns exist in dataframe.
+    
+    Parameters:
+    df: pandas DataFrame
+    required_columns: list of required column names
+    
+    Returns:
+    list: missing column names
+    """
+    return [col for col in required_columns if col not in df.columns]
+
+def filter_data_by_segment(df, segment_col, segment_value):
+    """
+    Filter dataframe by segment for drill-down analysis.
+    
+    Parameters:
+    df: pandas DataFrame
+    segment_col: str - column name for segmentation
+    segment_value: value to filter by
+    
+    Returns:
+    pandas DataFrame: filtered data
+    """
+    if segment_col and segment_value:
+        return df[df[segment_col] == segment_value].copy()
+    return df

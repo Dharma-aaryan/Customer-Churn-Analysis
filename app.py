@@ -158,7 +158,7 @@ def main():
         
         # Add Advanced section for technical controls
         with st.expander("Advanced"):
-            st.caption("Use PR-AUC for imbalanced data; adjust τ in Planner to suit budget and CX.")
+            st.caption("Use PR-AUC for imbalanced data; adjust campaign settings in Planner to suit your budget and customer experience goals.")
             
             model_type = st.selectbox(
                 "Model Type",
@@ -522,7 +522,8 @@ These numbers show how many customers we could save and how much money that migh
                 net_roi = value_generated - campaign_cost
                 roi_percentage = (net_roi / campaign_cost * 100) if campaign_cost > 0 else 0
                 
-                st.subheader("Campaign Performance Forecast")
+                st.subheader("📊 Campaign Results Preview")
+                st.markdown("*Here's what would happen if you ran this campaign today*")
                 
                 # Calculate ROI metrics for 5-column layout
                 offer_cost = customers_contacted * settings['cost_per_contact']
@@ -530,36 +531,86 @@ These numbers show how many customers we could save and how much money that migh
                 net_roi_calc = savings - offer_cost
                 roi_pct = (net_roi_calc / offer_cost * 100.0) if offer_cost > 0 else 0.0
                 
-                c1, c2, c3, c4, c5 = st.columns(5)
+                # Enhanced metric cards with better descriptions
+                col1, col2, col3, col4, col5 = st.columns(5)
                 
-                with c1:
-                    st.metric("Churners saved (est.)", f"{true_positives:,}")
+                with col1:
+                    st.markdown(f"""
+                    <div class="metric-container">
+                        <div class="metric-title">{true_positives:,}</div>
+                        <div class="metric-subtitle">Customers We'd Keep</div>
+                        <div class="metric-description">How many customers we expect to save from leaving based on our outreach efforts</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                with c2:
-                    st.metric("Contacts sent", f"{customers_contacted:,}")
+                with col2:
+                    st.markdown(f"""
+                    <div class="metric-container">
+                        <div class="metric-title">{customers_contacted:,}</div>
+                        <div class="metric-subtitle">Customers We'd Contact</div>
+                        <div class="metric-description">Total number of at-risk customers we'd reach out to with special offers or calls</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                with c3:
-                    st.metric("Offer cost", f"${offer_cost:,.0f}")
+                with col3:
+                    st.markdown(f"""
+                    <div class="metric-container">
+                        <div class="metric-title">${offer_cost:,.0f}</div>
+                        <div class="metric-subtitle">Campaign Investment</div>
+                        <div class="metric-description">Total cost to run the campaign including staff time, offers, and communication costs</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                with c4:
-                    st.metric("Net ROI", f"${net_roi_calc:,.0f}")
+                with col4:
+                    st.markdown(f"""
+                    <div class="metric-container">
+                        <div class="metric-title">${net_roi_calc:,.0f}</div>
+                        <div class="metric-subtitle">Net Profit</div>
+                        <div class="metric-description">Money left over after subtracting campaign costs from the revenue we save by keeping customers</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                with c5:
-                    st.metric("ROI %", f"{roi_pct:,.0f}%")
+                with col5:
+                    st.markdown(f"""
+                    <div class="metric-container">
+                        <div class="metric-title">{roi_pct:,.0f}%</div>
+                        <div class="metric-subtitle">Return on Investment</div>
+                        <div class="metric-description">For every $100 spent on the campaign, how much profit we expect to make back</div>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
-                # Add ROI computation explainer
-                st.markdown("""
-**How we compute ROI (at current settings)**
-- Offer cost = Contacts × Cost per contact
-- Savings = Churners saved × Value saved
-- Net ROI = Savings − Offer cost
-- ROI % = (Net ROI / Offer cost) × 100
-
-**Interpretation**
-- Lower τ → more saved churners *and* more contacts; ROI depends on both.
-- If value saved is high and contact cost is low, ROI % can be very large.
-- Use the sliders to run scenarios and find a balance that fits budget and CX constraints.
-                """)
+                # Enhanced ROI explanation with better design
+                st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
+                
+                # Create two columns for better layout
+                explain_col1, explain_col2 = st.columns([1, 1])
+                
+                with explain_col1:
+                    st.markdown("""
+                    <div class="insight-box">
+                        <h4>💰 How We Calculate Your Return</h4>
+                        <ol>
+                            <li><strong>Campaign Cost:</strong> Number of customers contacted × Cost to reach each one</li>
+                            <li><strong>Revenue Saved:</strong> Customers who stay × Value of keeping each customer</li>
+                            <li><strong>Profit:</strong> Revenue saved - Campaign cost</li>
+                            <li><strong>Return %:</strong> (Profit ÷ Campaign cost) × 100</li>
+                        </ol>
+                        <p><em>Think of it like: "For every $100 I spend, how much do I get back?"</em></p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with explain_col2:
+                    st.markdown("""
+                    <div class="warning-box">
+                        <h4>🎯 How to Use These Numbers</h4>
+                        <ul>
+                            <li><strong>Lower selectiveness:</strong> Contact more customers, save more, but spend more too</li>
+                            <li><strong>Higher selectiveness:</strong> Contact fewer customers, spend less, but might miss some at-risk customers</li>
+                            <li><strong>Sweet spot:</strong> Balance between reaching enough customers and controlling costs</li>
+                        </ul>
+                        <p><em>Adjust the settings on the left to find what works for your budget and goals.</em></p>
+                    </div>
+                    """, unsafe_allow_html=True)
                 
                 # Keep original detailed metrics
                 perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)

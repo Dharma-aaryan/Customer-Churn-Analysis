@@ -52,7 +52,10 @@ if 'selected_segment' not in st.session_state:
 @st.cache_data
 def get_data_hash(df):
     """Calculate hash of dataframe for reproducibility tracking."""
-    return hashlib.md5(pd.util.hash_pandas_object(df).values).hexdigest()[:8]
+    try:
+        return hashlib.md5(str(df.values.tobytes()).encode()).hexdigest()[:8]
+    except:
+        return "unknown"
 
 def get_status_ribbon():
     """Generate status ribbon showing pipeline progress."""
@@ -84,9 +87,6 @@ def get_status_ribbon():
     
     return " • ".join(status_items)
 
-def tooltip(text, explanation):
-    """Create inline tooltip for metrics."""
-    return f"{text} ⓘ" if explanation else text
 
 def show_empty_state(message, fix_tips):
     """Show empty state with helpful tips."""
@@ -147,34 +147,38 @@ def train_models_workflow():
 
 def initialize_session_state():
     """Initialize all session state variables with defaults."""
-    if 'data' not in st.session_state:
-        st.session_state.data = load_and_clean_data()
-    if 'models' not in st.session_state:
-        st.session_state.models = None
-    if 'cv_results' not in st.session_state:
-        st.session_state.cv_results = None
-    if 'X_test' not in st.session_state:
-        st.session_state.X_test = None
-    if 'y_test' not in st.session_state:
-        st.session_state.y_test = None
-    if 'feature_names' not in st.session_state:
-        st.session_state.feature_names = None
-    if 'data_hash' not in st.session_state:
-        st.session_state.data_hash = None
-    if 'preprocessor' not in st.session_state:
-        st.session_state.preprocessor = None
-    
-    # Business settings
-    if 'settings' not in st.session_state:
-        st.session_state.settings = {
-            'retention_aggressiveness': 0.5,
-            'cost_per_contact': 25,
-            'value_saved_per_customer': 1200,
-            'segment_filter': 'All Customers',
-            'model_type': 'Logistic Regression',
-            'use_smote': False,
-            'scoring_metric': 'pr_auc'
-        }
+    try:
+        if 'data' not in st.session_state:
+            st.session_state.data = load_and_clean_data()
+        if 'models' not in st.session_state:
+            st.session_state.models = None
+        if 'cv_results' not in st.session_state:
+            st.session_state.cv_results = None
+        if 'X_test' not in st.session_state:
+            st.session_state.X_test = None
+        if 'y_test' not in st.session_state:
+            st.session_state.y_test = None
+        if 'feature_names' not in st.session_state:
+            st.session_state.feature_names = None
+        if 'data_hash' not in st.session_state:
+            st.session_state.data_hash = None
+        if 'preprocessor' not in st.session_state:
+            st.session_state.preprocessor = None
+        
+        # Business settings
+        if 'settings' not in st.session_state:
+            st.session_state.settings = {
+                'retention_aggressiveness': 0.5,
+                'cost_per_contact': 25,
+                'value_saved_per_customer': 1200,
+                'segment_filter': 'All Customers',
+                'model_type': 'Logistic Regression',
+                'use_smote': False,
+                'scoring_metric': 'pr_auc'
+            }
+    except Exception as e:
+        st.error(f"Error initializing data: {str(e)}")
+        st.session_state.data = None
 
 def main():
     # Initialize session state first
@@ -1066,7 +1070,7 @@ def render_details_methods():
                         X_sample = X_test.iloc[:sample_size]
                         
                         # Create explainer based on model type
-                        if 'Random Forest' in best_model_name:
+                        if best_model_name and 'Random Forest' in best_model_name:
                             explainer = shap.TreeExplainer(model.named_steps['classifier'])
                             shap_values = explainer.shap_values(model.named_steps['preprocessor'].transform(X_sample))
                             
@@ -1995,7 +1999,10 @@ def insights_tab():
                 )
                 
                 if YAML_AVAILABLE:
-                    yaml_str = yaml.dump(model_card, default_flow_style=False)
+                    try:
+                        yaml_str = yaml.dump(model_card, default_flow_style=False)
+                    except Exception:
+                        yaml_str = "YAML export unavailable"
                     st.download_button(
                         label="Download model_card.yaml",
                         data=yaml_str,
@@ -2207,7 +2214,10 @@ def model_configuration_tab():
         
         # Show quick model performance summary
         if st.session_state.cv_results is not None and len(st.session_state.cv_results) > 0:
-            cv_df = pd.DataFrame(st.session_state.cv_results)
+            try:
+                cv_df = pd.DataFrame(st.session_state.cv_results)
+            except Exception:
+                cv_df = pd.DataFrame()
             best_model = cv_df.loc[cv_df['PR_AUC'].idxmax()]
             
             performance_summary = {

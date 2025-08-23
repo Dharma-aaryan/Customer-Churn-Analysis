@@ -155,26 +155,33 @@ def main():
             if st.session_state.data is not None:
                 with st.spinner("Training models..."):
                     try:
-                        df = st.session_state.data
+                        df = st.session_state.data.copy()
                         
-                        # Apply segment filter
+                        # Apply segment filter with validation
                         if st.session_state.settings['segment_filter'] != 'All Customers':
-                            df = df[df['Contract'] == st.session_state.settings['segment_filter']]
+                            filtered_df = df[df['Contract'] == st.session_state.settings['segment_filter']]
+                            if len(filtered_df) < 50:
+                                st.error(f"Not enough data for segment '{st.session_state.settings['segment_filter']}'. Need at least 50 customers.")
+                                st.stop()
+                            df = filtered_df
                         
                         # Preprocess and train
                         X_train, X_test, y_train, y_test, preprocessor, feature_names = preprocess_data(df)
                         models, cv_results = train_models(X_train, y_train, preprocessor, feature_names)
                         
-                        # Store results
+                        # Store results with segment info
                         st.session_state.models = models
                         st.session_state.cv_results = cv_results
                         st.session_state.X_test = X_test
                         st.session_state.y_test = y_test
                         st.session_state.feature_names = feature_names
+                        st.session_state.trained_segment = st.session_state.settings['segment_filter']
                         
-                        st.success("Models trained!")
+                        st.success(f"Models trained successfully for {st.session_state.settings['segment_filter']}!")
                     except Exception as e:
                         st.error(f"Training error: {str(e)}")
+                        st.session_state.models = None
+                        st.session_state.cv_results = None
             else:
                 st.error("No data available for training")
     
@@ -186,11 +193,18 @@ def main():
     df = st.session_state.data
     settings = st.session_state.settings
     
-    # Apply segment filter for display
-    if settings['segment_filter'] != 'All Customers':
-        df_display = df[df['Contract'] == settings['segment_filter']]
-    else:
-        df_display = df
+    # Apply segment filter for display with validation
+    try:
+        if settings['segment_filter'] != 'All Customers':
+            df_display = df[df['Contract'] == settings['segment_filter']].copy()
+            if len(df_display) == 0:
+                st.warning(f"No customers found for segment '{settings['segment_filter']}'. Showing all customers.")
+                df_display = df.copy()
+        else:
+            df_display = df.copy()
+    except Exception as e:
+        st.error(f"Error applying segment filter: {str(e)}")
+        df_display = df.copy()
     
     # Main tabs
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -251,7 +265,7 @@ def main():
         
         # ROI estimate section
         st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
-        st.subheader("📊 Campaign ROI Forecast")
+        st.subheader("Campaign ROI Forecast")
         st.markdown("*Strategic investment analysis for retention campaigns*")
         
         contacts = at_risk_customers
@@ -299,7 +313,7 @@ def main():
         
         st.markdown("""
         <div class="insight-box">
-            <strong>💡 Business Insight:</strong> ROI analysis assumes 30% retention campaign success rate based on industry benchmarks. 
+            <strong>Business Insight:</strong> ROI analysis assumes 30% retention campaign success rate based on industry benchmarks. 
             Actual results may vary based on offer attractiveness, customer segment, and execution quality.
         </div>
         """, unsafe_allow_html=True)
@@ -349,7 +363,7 @@ def main():
         
         # Enhanced strategic recommendations
         st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
-        st.subheader("🎯 Strategic Recommendations")
+        st.subheader("Strategic Recommendations")
         st.markdown("*Data-driven action plan for immediate implementation*")
         
         rec_col1, rec_col2 = st.columns(2)
@@ -357,7 +371,7 @@ def main():
         with rec_col1:
             st.markdown("""
             <div class="warning-box">
-                <h4>🚨 Immediate Actions Required</h4>
+                <h4>Immediate Actions Required</h4>
                 <ul>
                     <li><strong>Priority 1:</strong> Target month-to-month customers with contract upgrade offers</li>
                     <li><strong>Priority 2:</strong> Implement 90-day onboarding program for new customers</li>
@@ -371,7 +385,7 @@ def main():
         with rec_col2:
             st.markdown("""
             <div class="success-box">
-                <h4>📈 Expected Business Impact</h4>
+                <h4>Expected Business Impact</h4>
                 <ul>
                     <li><strong>Churn Reduction:</strong> 15-20% decrease in customer losses</li>
                     <li><strong>Revenue Protection:</strong> $50K+ monthly recurring revenue saved</li>
@@ -386,16 +400,30 @@ def main():
         st.header("Retention Campaign Planner")
         st.caption("Plan and optimize retention campaigns")
         
-        if st.session_state.models is None:
+        models_available = (st.session_state.models is not None and 
+                           st.session_state.cv_results is not None and 
+                           len(st.session_state.cv_results) > 0)
+        
+        if not models_available:
             st.warning("Please train models first using the sidebar controls.")
         else:
             try:
+                # Check if models were trained for current segment
+                trained_segment = getattr(st.session_state, 'trained_segment', 'All Customers')
+                if trained_segment != settings['segment_filter']:
+                    st.warning(f"Models were trained for '{trained_segment}' but current filter is '{settings['segment_filter']}'. Please retrain models.")
+                    st.stop()
+                
                 models = st.session_state.models
                 X_test = st.session_state.X_test
                 y_test = st.session_state.y_test
                 
-                # Get predictions
+                # Get predictions with error handling
                 best_model_name = get_best_model(st.session_state.cv_results)
+                if best_model_name not in models:
+                    st.error(f"Model '{best_model_name}' not found in trained models.")
+                    st.stop()
+                    
                 model = models[best_model_name]
                 
                 y_proba = model.predict_proba(X_test)[:, 1]
@@ -491,7 +519,7 @@ def main():
             try:
                 cv_results = st.session_state.cv_results
                 
-                if cv_results:
+                if cv_results is not None and len(cv_results) > 0:
                     st.subheader("Model Performance Comparison")
                     cv_df = pd.DataFrame(cv_results)
                     st.dataframe(cv_df.round(4), use_container_width=True)
@@ -508,7 +536,7 @@ def main():
         st.caption("Dataset overview and quality metrics")
         
         # Dataset overview with enhanced styling
-        st.subheader("📊 Dataset Overview")
+        st.subheader("Dataset Overview")
         st.markdown("*Comprehensive data quality and completeness metrics*")
         
         overview_col1, overview_col2, overview_col3, overview_col4 = st.columns(4)

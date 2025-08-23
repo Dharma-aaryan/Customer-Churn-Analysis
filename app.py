@@ -105,46 +105,6 @@ def main():
     
     # Sidebar controls
     with st.sidebar:
-        # Add persistent Assumptions & ROI panel at top
-        with st.expander("Assumptions & ROI", expanded=False):
-            threshold = st.session_state.settings.get('retention_aggressiveness', 0.5)
-            cost_per_contact = st.session_state.settings.get('cost_per_contact', 25)
-            value_saved = st.session_state.settings.get('value_saved_per_customer', 1200)
-            
-            st.markdown(f"""
-### Assumptions & ROI (Business View)
-
-**What these numbers mean**
-- **Risk score**: Estimated probability a customer will churn.
-- **Retention aggressiveness (τ)**: The cut-off above which we flag a customer as "at risk." Lower τ → more customers flagged (higher recall), higher τ → fewer false alarms (higher precision).
-- **Cost per contact**: Estimated cost to reach one customer with an offer.
-- **Value saved per churn prevented**: Estimated value gained if one churner stays.
-
-**ROI math (current settings)**
-- **Offer cost** = Contacts Sent × Cost per contact  
-- **Savings** = Churners Saved × Value saved per churn prevented  
-- **Net ROI** = Savings − Offer cost  
-- **ROI %** = (Net ROI / Offer cost) × 100
-
-**Why ROI% can look very high**
-- The denominator (**Offer cost**) is often much smaller than the numerator (**Savings**).
-- If **Value saved** ≫ **Cost per contact**, ROI% will be large even with modest performance.
-- Treat ROI% as a *what-if* based on assumptions, not a guarantee.
-
-**Key assumptions you can adjust**
-- Cost per contact = **${cost_per_contact:,.2f}**
-- Value saved per churn prevented = **${value_saved:,.2f}**
-- Retention aggressiveness (τ) = **{threshold:.2f}**
-
-**Caveats**
-- Fixed/overhead costs are not included (campaign set-up, engineering time, tooling).
-- Offer uptake rate and cannibalization (giving discounts to customers who wouldn't churn) are not modeled.
-- False positives may cause customer fatigue and future opt-out; use the Planner to balance precision vs recall.
-- Model is trained on historical data; distribution shifts can reduce lift. Re-validate periodically.
-
-*Tip:* Use the **Retention Planner** to tune aggressiveness and assumptions, then watch **Net ROI** and **ROI %** update.
-            """)
-        
         st.header("Campaign Controls")
         
         with st.form("controls"):
@@ -197,7 +157,7 @@ def main():
                 st.rerun()
         
         # Add Advanced section for technical controls
-        with st.expander("Advanced (optional)"):
+        with st.expander("Advanced"):
             st.caption("Use PR-AUC for imbalanced data; adjust τ in Planner to suit budget and CX.")
             
             model_type = st.selectbox(
@@ -334,17 +294,17 @@ def main():
         
         # ROI estimate section
         st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
-        st.subheader("Campaign ROI Forecast")
-        st.markdown("*Strategic investment analysis for retention campaigns*")
+        st.subheader("Campaign Investment Forecast")
+        st.markdown("*Simple analysis to help you plan your customer retention campaigns*")
         
-        # Add Context & Assumptions info block
+        # Add Context & Assumptions info block with simpler language
         st.info("""
-> **Context & Assumptions**  
-The KPIs reflect current settings (τ, cost per contact, value saved). They estimate **how many customers we might save** and **what that could be worth** if we act now.
+> **How to Read These Numbers**  
+These numbers show how many customers we could save and how much money that might be worth based on your current campaign settings.
 
-- **What's controllable**: retention aggressiveness (τ), campaign costs, and offer value.
-- **What's estimated**: churn risk from the model; lift depends on data quality and stability.
-- **What to do next**: adjust τ in **Retention Planner** and re-check **Net ROI** and **ROI %**.
+- **You can control**: How aggressive you want to be, how much you spend per customer contact, and the value of keeping each customer.
+- **The system estimates**: Which customers are likely to leave based on past data.
+- **Next steps**: Use the **Retention Planner** tab to adjust your settings and see how it affects your return on investment.
         """)
         
         contacts = at_risk_customers
@@ -392,10 +352,49 @@ The KPIs reflect current settings (τ, cost per contact, value saved). They esti
         
         st.markdown("""
         <div class="insight-box">
-            <strong>Business Insight:</strong> ROI analysis assumes 30% retention campaign success rate based on industry benchmarks. 
-            Actual results may vary based on offer attractiveness, customer segment, and execution quality.
+            <strong>Business Insight:</strong> These projections assume we can successfully retain 3 out of every 10 customers we contact, which is a typical success rate for retention campaigns.
         </div>
         """, unsafe_allow_html=True)
+        
+        # Add detailed Assumptions & ROI section here
+        threshold = settings['retention_aggressiveness']
+        cost_per_contact = settings['cost_per_contact']
+        value_saved = settings['value_saved_per_customer']
+            
+        st.markdown(f"""
+### Campaign Assumptions & ROI Details
+
+**What these numbers mean**
+- **Risk score**: How likely each customer is to cancel (0% to 100%)
+- **Campaign aggressiveness**: How selective we are - lower means we contact more customers, higher means we're more selective
+- **Cost per contact**: What it costs to reach one customer with an offer or call
+- **Value saved**: How much revenue we keep when we prevent one customer from leaving
+
+**How we calculate return on investment**
+- **Campaign cost** = Number of customers contacted × Cost per contact  
+- **Revenue saved** = Customers who stay × Value saved per customer  
+- **Net profit** = Revenue saved − Campaign cost  
+- **ROI percentage** = (Net profit ÷ Campaign cost) × 100
+
+**Why returns can look very high**
+- Campaign costs are usually much smaller than the revenue from keeping customers
+- If keeping a customer is worth much more than contacting them, the ROI percentage gets very large
+- Think of these as "what if" scenarios based on your assumptions, not guaranteed results
+
+**Your current settings**
+- Cost per contact = **${cost_per_contact:,.2f}**
+- Value of keeping one customer = **${value_saved:,.2f}**
+- Campaign selectiveness = **{threshold:.2f}** (lower = contact more customers)
+
+**Important limitations**
+- These numbers don't include setup costs, staff time, or system costs
+- We assume every contacted customer gets the same offer and responds the same way
+- Some customers might accept offers even if they weren't planning to leave
+- Contacting too many customers might annoy them and hurt future campaigns
+- These predictions are based on past data and might not work the same way in the future
+
+*Tip: Use the **Retention Planner** tab to try different settings and see how they affect your costs and returns.*
+        """)
     
     with tab2:
         st.header("Customer Segments & Churn Drivers")

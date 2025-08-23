@@ -476,7 +476,6 @@ These numbers show how many customers we could save and how much money that migh
     
     with tab3:
         st.header("Retention Campaign Planner")
-        st.caption("Plan and optimize retention campaigns")
         
         models_available = (st.session_state.models is not None and 
                            st.session_state.cv_results is not None and 
@@ -522,8 +521,8 @@ These numbers show how many customers we could save and how much money that migh
                 net_roi = value_generated - campaign_cost
                 roi_percentage = (net_roi / campaign_cost * 100) if campaign_cost > 0 else 0
                 
-                st.subheader("📊 Campaign Results Preview")
-                st.markdown("*Here's what would happen if you ran this campaign today*")
+                st.subheader("Campaign Results Preview")
+                st.markdown("*Here's what would happen if we run this campaign today*")
                 
                 # Calculate ROI metrics for 5-column layout
                 offer_cost = customers_contacted * settings['cost_per_contact']
@@ -579,38 +578,35 @@ These numbers show how many customers we could save and how much money that migh
                     </div>
                     """, unsafe_allow_html=True)
                 
-                # Enhanced ROI explanation with better design
+                # Enhanced ROI explanation with stacked layout
                 st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
                 
-                # Create two columns for better layout
-                explain_col1, explain_col2 = st.columns([1, 1])
+                # First section - How to Calculate Return
+                st.markdown("""
+                <div class="insight-box">
+                    <h4>How to Calculate Return</h4>
+                    <ol>
+                        <li><strong>Campaign Cost:</strong> Number of customers contacted × Cost to reach each one</li>
+                        <li><strong>Revenue Saved:</strong> Customers who stay × Value of keeping each customer</li>
+                        <li><strong>Profit:</strong> Revenue saved - Campaign cost</li>
+                        <li><strong>Return %:</strong> (Profit ÷ Campaign cost) × 100</li>
+                    </ol>
+                    <p><em>Think of it like: "For every $100 I spend, how much do I get back?"</em></p>
+                </div>
+                """, unsafe_allow_html=True)
                 
-                with explain_col1:
-                    st.markdown("""
-                    <div class="insight-box">
-                        <h4>💰 How We Calculate Your Return</h4>
-                        <ol>
-                            <li><strong>Campaign Cost:</strong> Number of customers contacted × Cost to reach each one</li>
-                            <li><strong>Revenue Saved:</strong> Customers who stay × Value of keeping each customer</li>
-                            <li><strong>Profit:</strong> Revenue saved - Campaign cost</li>
-                            <li><strong>Return %:</strong> (Profit ÷ Campaign cost) × 100</li>
-                        </ol>
-                        <p><em>Think of it like: "For every $100 I spend, how much do I get back?"</em></p>
-                    </div>
-                    """, unsafe_allow_html=True)
-                
-                with explain_col2:
-                    st.markdown("""
-                    <div class="warning-box">
-                        <h4>🎯 How to Use These Numbers</h4>
-                        <ul>
-                            <li><strong>Lower selectiveness:</strong> Contact more customers, save more, but spend more too</li>
-                            <li><strong>Higher selectiveness:</strong> Contact fewer customers, spend less, but might miss some at-risk customers</li>
-                            <li><strong>Sweet spot:</strong> Balance between reaching enough customers and controlling costs</li>
-                        </ul>
-                        <p><em>Adjust the settings on the left to find what works for your budget and goals.</em></p>
-                    </div>
-                    """, unsafe_allow_html=True)
+                # Second section - How to Use These Metrics
+                st.markdown("""
+                <div class="warning-box">
+                    <h4>How to Use These Metrics</h4>
+                    <ul>
+                        <li><strong>Lower selectiveness:</strong> Contact more customers, save more, but spend more too</li>
+                        <li><strong>Higher selectiveness:</strong> Contact fewer customers, spend less, but might miss some at-risk customers</li>
+                        <li><strong>Sweet spot:</strong> Balance between reaching enough customers and controlling costs</li>
+                    </ul>
+                    <p><em>Adjust the settings on the left to find what works for your budget and goals.</em></p>
+                </div>
+                """, unsafe_allow_html=True)
                 
                 # Keep original detailed metrics
                 perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)

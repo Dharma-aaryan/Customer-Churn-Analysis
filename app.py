@@ -105,17 +105,58 @@ def main():
     
     # Sidebar controls
     with st.sidebar:
+        # Add persistent Assumptions & ROI panel at top
+        with st.expander("Assumptions & ROI", expanded=False):
+            threshold = st.session_state.settings.get('retention_aggressiveness', 0.5)
+            cost_per_contact = st.session_state.settings.get('cost_per_contact', 25)
+            value_saved = st.session_state.settings.get('value_saved_per_customer', 1200)
+            
+            st.markdown(f"""
+### Assumptions & ROI (Business View)
+
+**What these numbers mean**
+- **Risk score**: Estimated probability a customer will churn.
+- **Retention aggressiveness (τ)**: The cut-off above which we flag a customer as "at risk." Lower τ → more customers flagged (higher recall), higher τ → fewer false alarms (higher precision).
+- **Cost per contact**: Estimated cost to reach one customer with an offer.
+- **Value saved per churn prevented**: Estimated value gained if one churner stays.
+
+**ROI math (current settings)**
+- **Offer cost** = Contacts Sent × Cost per contact  
+- **Savings** = Churners Saved × Value saved per churn prevented  
+- **Net ROI** = Savings − Offer cost  
+- **ROI %** = (Net ROI / Offer cost) × 100
+
+**Why ROI% can look very high**
+- The denominator (**Offer cost**) is often much smaller than the numerator (**Savings**).
+- If **Value saved** ≫ **Cost per contact**, ROI% will be large even with modest performance.
+- Treat ROI% as a *what-if* based on assumptions, not a guarantee.
+
+**Key assumptions you can adjust**
+- Cost per contact = **${cost_per_contact:,.2f}**
+- Value saved per churn prevented = **${value_saved:,.2f}**
+- Retention aggressiveness (τ) = **{threshold:.2f}**
+
+**Caveats**
+- Fixed/overhead costs are not included (campaign set-up, engineering time, tooling).
+- Offer uptake rate and cannibalization (giving discounts to customers who wouldn't churn) are not modeled.
+- False positives may cause customer fatigue and future opt-out; use the Planner to balance precision vs recall.
+- Model is trained on historical data; distribution shifts can reduce lift. Re-validate periodically.
+
+*Tip:* Use the **Retention Planner** to tune aggressiveness and assumptions, then watch **Net ROI** and **ROI %** update.
+            """)
+        
         st.header("Campaign Controls")
         
         with st.form("controls"):
             st.subheader("Retention Settings")
             
             retention_aggressiveness = st.slider(
-                "Retention Aggressiveness",
+                "Retention aggressiveness (τ)",
                 min_value=0.1,
                 max_value=0.9,
                 value=st.session_state.settings['retention_aggressiveness'],
-                step=0.05
+                step=0.05,
+                help="Lower τ flags more customers (higher recall), higher τ flags fewer (higher precision)."
             )
             
             cost_per_contact = st.number_input(
@@ -154,6 +195,29 @@ def main():
                 })
                 st.success("Settings applied!")
                 st.rerun()
+        
+        # Add Advanced section for technical controls
+        with st.expander("Advanced (optional)"):
+            st.caption("Use PR-AUC for imbalanced data; adjust τ in Planner to suit budget and CX.")
+            
+            model_type = st.selectbox(
+                "Model Type",
+                ['Logistic Regression', 'Random Forest'],
+                index=0
+            )
+            
+            use_smote = st.checkbox(
+                "Use SMOTE for class balancing",
+                value=False,
+                help="Synthetic oversampling for minority class"
+            )
+            
+            scoring_metric = st.selectbox(
+                "Optimization Metric",
+                ['pr_auc', 'roc_auc', 'f1'],
+                index=0,
+                help="Better than ROC-AUC for imbalanced data; focuses on quality for churners."
+            )
         
         # Training button
         if st.button("Train Models", type="secondary", use_container_width=True):
@@ -272,6 +336,16 @@ def main():
         st.markdown('<hr class="section-divider">', unsafe_allow_html=True)
         st.subheader("Campaign ROI Forecast")
         st.markdown("*Strategic investment analysis for retention campaigns*")
+        
+        # Add Context & Assumptions info block
+        st.info("""
+> **Context & Assumptions**  
+The KPIs reflect current settings (τ, cost per contact, value saved). They estimate **how many customers we might save** and **what that could be worth** if we act now.
+
+- **What's controllable**: retention aggressiveness (τ), campaign costs, and offer value.
+- **What's estimated**: churn risk from the model; lift depends on data quality and stability.
+- **What to do next**: adjust τ in **Retention Planner** and re-check **Net ROI** and **ROI %**.
+        """)
         
         contacts = at_risk_customers
         cost = contacts * settings['cost_per_contact']
@@ -451,6 +525,44 @@ def main():
                 
                 st.subheader("Campaign Performance Forecast")
                 
+                # Calculate ROI metrics for 5-column layout
+                offer_cost = customers_contacted * settings['cost_per_contact']
+                savings = true_positives * settings['value_saved_per_customer']
+                net_roi_calc = savings - offer_cost
+                roi_pct = (net_roi_calc / offer_cost * 100.0) if offer_cost > 0 else 0.0
+                
+                c1, c2, c3, c4, c5 = st.columns(5)
+                
+                with c1:
+                    st.metric("Churners saved (est.)", f"{true_positives:,}")
+                
+                with c2:
+                    st.metric("Contacts sent", f"{customers_contacted:,}")
+                
+                with c3:
+                    st.metric("Offer cost", f"${offer_cost:,.0f}")
+                
+                with c4:
+                    st.metric("Net ROI", f"${net_roi_calc:,.0f}")
+                
+                with c5:
+                    st.metric("ROI %", f"{roi_pct:,.0f}%")
+                
+                # Add ROI computation explainer
+                st.markdown("""
+**How we compute ROI (at current settings)**
+- Offer cost = Contacts × Cost per contact
+- Savings = Churners saved × Value saved
+- Net ROI = Savings − Offer cost
+- ROI % = (Net ROI / Offer cost) × 100
+
+**Interpretation**
+- Lower τ → more saved churners *and* more contacts; ROI depends on both.
+- If value saved is high and contact cost is low, ROI % can be very large.
+- Use the sliders to run scenarios and find a balance that fits budget and CX constraints.
+                """)
+                
+                # Keep original detailed metrics
                 perf_col1, perf_col2, perf_col3, perf_col4 = st.columns(4)
                 
                 with perf_col1:
@@ -534,9 +646,66 @@ def main():
                     cv_df = pd.DataFrame(cv_results)
                     st.dataframe(cv_df.round(4), use_container_width=True)
                     
-                    # Best model info
+                    # Best model info with PR-AUC tooltip
                     best_model_name = get_best_model(cv_results)
                     st.info(f"Best performing model: {best_model_name}")
+                    
+                    # Add Metrics & Assumptions section
+                    st.markdown("""
+### Metrics & Assumptions
+
+**Imbalance-aware metric**
+- **PR-AUC** focuses on performance for the positive (churn) class and is more informative than ROC-AUC when churners are rare.
+
+**Threshold (τ) trade-off**
+- Lower τ increases **Recall** (catch more churners) but may reduce **Precision** (more false alarms).
+- Business cost/benefit is managed in **Retention Planner**.
+
+**Assumptions carried through the app**
+- Cost per contact and Value saved are scenario inputs that drive ROI and can be changed anytime.
+- We assume one contact per flagged customer, immediate offer delivery, and uniform offer effectiveness.
+
+**Limitations**
+- Fixed and overhead costs not modeled; include them in external budgeting.
+- No explicit modeling of offer acceptance, discount cannibalization, or long-term behavior changes.
+- Results depend on dataset representativeness and calibration; retrain/validate periodically.
+                    """)
+                    
+                    # Add assumptions export
+                    try:
+                        threshold = settings['retention_aggressiveness']
+                        cost_per_contact_export = settings['cost_per_contact']
+                        value_saved_export = settings['value_saved_per_customer']
+                        
+                        # Calculate current metrics
+                        contacts = customers_contacted if 'customers_contacted' in locals() else 0
+                        TP = true_positives if 'true_positives' in locals() else 0
+                        offer_cost_export = contacts * cost_per_contact_export
+                        savings_export = TP * value_saved_export
+                        net_roi_export = savings_export - offer_cost_export
+                        roi_pct_export = (net_roi_export / offer_cost_export * 100.0) if offer_cost_export > 0 else 0.0
+                        
+                        assumptions_payload = {
+                            "threshold": float(threshold),
+                            "cost_per_contact": float(cost_per_contact_export),
+                            "value_saved": float(value_saved_export),
+                            "contacts": int(contacts),
+                            "churners_saved": int(TP),
+                            "offer_cost": float(offer_cost_export),
+                            "net_roi": float(net_roi_export),
+                            "roi_pct": float(roi_pct_export),
+                            "metrics": {k: float(v) for k, v in cv_df.iloc[0].to_dict().items()} if len(cv_df) > 0 else {},
+                            "rows": int(len(df_display)) if 'df_display' in locals() else None
+                        }
+                        
+                        st.download_button(
+                            "Metrics & Settings (JSON)",
+                            data=json.dumps(assumptions_payload, indent=2),
+                            file_name="metrics_settings.json",
+                            mime="application/json"
+                        )
+                    except Exception as e:
+                        st.caption(f"Export unavailable: {str(e)}")
                 
             except Exception as e:
                 st.error(f"Error displaying model details: {str(e)}")

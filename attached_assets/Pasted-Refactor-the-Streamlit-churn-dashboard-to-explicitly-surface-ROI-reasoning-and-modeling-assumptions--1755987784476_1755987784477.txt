@@ -1,0 +1,165 @@
+Refactor the Streamlit churn dashboard to explicitly surface ROI reasoning and modeling assumptions in the UI. Keep all existing logic. Make the changes below (use the exact copy blocks as provided).
+
+1) Add a persistent “Assumptions & ROI” panel
+
+Location: top of sidebar, inside an st.sidebar.expander("Assumptions & ROI").
+
+Content: paste the markdown below and interpolate the current settings if available from st.session_state:
+
+threshold → retention aggressiveness (τ)
+
+cost_per_contact
+
+value_saved
+
+If available, also display contacts sent, churners saved (TP), offer cost, net ROI, and ROI %.
+
+Markdown to paste (use f-strings for the variables):
+
+### Assumptions & ROI (Business View)
+
+**What these numbers mean**
+- **Risk score**: Estimated probability a customer will churn.
+- **Retention aggressiveness (τ)**: The cut-off above which we flag a customer as “at risk.” Lower τ → more customers flagged (higher recall), higher τ → fewer false alarms (higher precision).
+- **Cost per contact**: Estimated cost to reach one customer with an offer.
+- **Value saved per churn prevented**: Estimated value gained if one churner stays.
+
+**ROI math (current settings)**
+- **Offer cost** = Contacts Sent × Cost per contact  
+- **Savings** = Churners Saved × Value saved per churn prevented  
+- **Net ROI** = Savings − Offer cost  
+- **ROI %** = (Net ROI / Offer cost) × 100
+
+**Why ROI% can look very high**
+- The denominator (**Offer cost**) is often much smaller than the numerator (**Savings**).  
+- If **Value saved** ≫ **Cost per contact**, ROI% will be large even with modest performance.  
+- Treat ROI% as a *what-if* based on assumptions, not a guarantee.
+
+**Key assumptions you can adjust**
+- Cost per contact = **${cost_per_contact:,.2f}**
+- Value saved per churn prevented = **${value_saved:,.2f}**
+- Retention aggressiveness (τ) = **{threshold:.2f}**
+
+**Caveats**
+- Fixed/overhead costs are not included (campaign set-up, engineering time, tooling).
+- Offer uptake rate and cannibalization (giving discounts to customers who wouldn’t churn) are not modeled.
+- False positives may cause customer fatigue and future opt-out; use the Planner to balance precision vs recall.
+- Model is trained on historical data; distribution shifts can reduce lift. Re-validate periodically.
+
+*Tip:* Use the **Retention Planner** to tune aggressiveness and assumptions, then watch **Net ROI** and **ROI %** update.
+
+2) Executive Summary: add a “Context & Assumptions” info block
+
+Place a small info box under KPI cards with the following one-liner and bullets.
+
+Markdown to paste:
+
+> **Context & Assumptions**  
+The KPIs reflect current settings (τ, cost per contact, value saved). They estimate **how many customers we might save** and **what that could be worth** if we act now.
+
+- **What’s controllable**: retention aggressiveness (τ), campaign costs, and offer value.
+- **What’s estimated**: churn risk from the model; lift depends on data quality and stability.
+- **What to do next**: adjust τ in **Retention Planner** and re-check **Net ROI** and **ROI %**.
+
+3) Retention Planner: add a “How we compute ROI” explainer and an ROI% metric card
+
+Under the planner KPIs (saved, contacts, cost, net ROI), add a fifth metric: ROI %.
+
+Show the explainer block below the metrics.
+
+Compute and display (Python):
+
+offer_cost = contacts * cost_per_contact
+savings = TP * value_saved
+net_roi = savings - offer_cost
+roi_pct = (net_roi / offer_cost * 100.0) if offer_cost > 0 else 0.0
+
+c1, c2, c3, c4, c5 = st.columns(5)
+c1.metric("Churners saved (est.)", f"{TP:,}")
+c2.metric("Contacts sent", f"{contacts:,}")
+c3.metric("Offer cost", f"${offer_cost:,.0f}")
+c4.metric("Net ROI", f"${net_roi:,.0f}")
+c5.metric("ROI %", f"{roi_pct:,.0f}%")
+
+
+Markdown explainer to paste under the metrics:
+
+**How we compute ROI (at current settings)**
+- Offer cost = Contacts × Cost per contact
+- Savings = Churners saved × Value saved
+- Net ROI = Savings − Offer cost
+- ROI % = (Net ROI / Offer cost) × 100
+
+**Interpretation**
+- Lower τ → more saved churners *and* more contacts; ROI depends on both.
+- If value saved is high and contact cost is low, ROI % can be very large.
+- Use the sliders to run scenarios and find a balance that fits budget and CX constraints.
+
+4) Details & Methods: add a “Metrics & Assumptions” section
+
+Append this section under your metrics/glossary.
+
+Markdown to paste:
+
+### Metrics & Assumptions
+
+**Imbalance-aware metric**
+- **PR-AUC** focuses on performance for the positive (churn) class and is more informative than ROC-AUC when churners are rare.
+
+**Threshold (τ) trade-off**
+- Lower τ increases **Recall** (catch more churners) but may reduce **Precision** (more false alarms).  
+- Business cost/benefit is managed in **Retention Planner**.
+
+**Assumptions carried through the app**
+- Cost per contact and Value saved are scenario inputs that drive ROI and can be changed anytime.
+- We assume one contact per flagged customer, immediate offer delivery, and uniform offer effectiveness.
+
+**Limitations**
+- Fixed and overhead costs not modeled; include them in external budgeting.
+- No explicit modeling of offer acceptance, discount cannibalization, or long-term behavior changes.
+- Results depend on dataset representativeness and calibration; retrain/validate periodically.
+
+5) Add lightweight tooltips next to key labels
+
+Replace technical labels with business wording, and add tooltips:
+
+“Decision threshold” → “Retention aggressiveness (τ)” with tooltip: “Lower τ flags more customers (higher recall), higher τ flags fewer (higher precision).”
+
+“Predicted probability” → “Risk score” with tooltip: “Estimated likelihood of churn (0–1).”
+
+Near PR-AUC metric, tooltip: “Better than ROC-AUC for imbalanced data; focuses on quality for churners.”
+
+6) Add an assumptions export
+
+Add a download button labeled “Metrics & Settings (JSON)” that includes:
+
+threshold, cost_per_contact, value_saved, contacts, churners_saved, offer_cost, net_roi, roi_pct,
+
+key model metrics (Accuracy, Precision, Recall, F1, ROC-AUC, PR-AUC),
+
+dataset hash/rows if available.
+
+Code snippet:
+
+assumptions_payload = {
+    "threshold": float(threshold),
+    "cost_per_contact": float(cost_per_contact),
+    "value_saved": float(value_saved),
+    "contacts": int(contacts),
+    "churners_saved": int(TP),
+    "offer_cost": float(offer_cost),
+    "net_roi": float(net_roi),
+    "roi_pct": float(roi_pct),
+    "metrics": {k: float(v) for k, v in test_metrics.items()} if "test_metrics" in locals() else {},
+    "rows": int(len(df)) if "df" in locals() else None
+}
+st.download_button(
+    "Metrics & Settings (JSON)",
+    data=json.dumps(assumptions_payload, indent=2),
+    file_name="metrics_settings.json",
+    mime="application/json"
+)
+
+7) Keep technical knobs in “Advanced”
+
+Ensure model choice, SMOTE, and any CV toggles remain inside an st.expander("Advanced (optional)") on the Planner or Details tab, with a one-line reminder: “Use PR-AUC for imbalanced data; adjust τ in Planner to suit budget and CX.”

@@ -15,10 +15,11 @@ try:
 except ImportError:
     YAML_AVAILABLE = False
 
-from utils.data import load_and_clean_data, preprocess_data, get_data_dictionary, validate_data_columns
+from utils.data import load_and_clean_data, preprocess_data, get_data_dictionary, validate_data_columns, filter_data_by_segment
 from utils.model import (
     train_models, evaluate_model_at_threshold, get_best_model, export_predictions,
-    calculate_cost_optimal_threshold, get_permutation_importance, get_cv_stability
+    calculate_cost_optimal_threshold, get_permutation_importance, get_cv_stability,
+    generate_model_interpretation, export_model_card
 )
 from utils.viz import (
     plot_churn_distribution, plot_numeric_histograms, plot_categorical_vs_churn,

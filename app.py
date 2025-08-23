@@ -91,7 +91,7 @@ def tooltip(text, explanation):
 def show_empty_state(message, fix_tips):
     """Show empty state with helpful tips."""
     st.warning(message)
-    with st.expander("💡 How to fix this"):
+    with st.expander("How to fix this"):
         for tip in fix_tips:
             st.write(f"• {tip}")
 
@@ -113,33 +113,9 @@ def cache_eda_calculations(df):
 def main():
     st.title("Churn Insights Dashboard")
     
-    # Status ribbon
-    status = get_status_ribbon()
-    st.markdown(f"**Pipeline Status:** {status}")
-    st.markdown("---")
-    
-    # File upload section
-    st.sidebar.header("Data Upload")
-    uploaded_file = st.sidebar.file_uploader(
-        "Upload CSV file", 
-        type=['csv'],
-        help="Upload your own customer churn dataset or use the default Telco dataset"
-    )
-    
-    # Load data
-    if uploaded_file is not None:
-        try:
-            df = pd.read_csv(uploaded_file)
-            st.session_state.data = load_and_clean_data(df)
-            st.sidebar.success("Custom dataset loaded successfully!")
-        except Exception as e:
-            st.sidebar.error(f"Error loading file: {str(e)}")
-            st.session_state.data = load_and_clean_data()
-    else:
-        # Load default dataset
-        if st.session_state.data is None:
-            st.session_state.data = load_and_clean_data()
-        st.sidebar.info("Using default Telco Customer Churn dataset")
+    # Load default dataset
+    if st.session_state.data is None:
+        st.session_state.data = load_and_clean_data()
     
     if st.session_state.data is None:
         show_empty_state(
@@ -172,12 +148,13 @@ def main():
         return
     
     # Business-oriented navigation
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "Executive Summary", 
         "Segments & Drivers", 
-        "Retention Planner", 
         "Details & Methods", 
-        "Data & Quality"
+        "Retention Planner", 
+        "Data & Quality",
+        "Model Configuration"
     ])
     
     with tab1:
@@ -187,13 +164,16 @@ def main():
         segments_drivers_tab()
         
     with tab3:
-        retention_planner_tab()
+        details_methods_tab()
         
     with tab4:
-        details_methods_tab()
+        retention_planner_tab()
         
     with tab5:
         data_quality_tab()
+        
+    with tab6:
+        model_configuration_tab()
 
 @st.cache_data
 def get_data_summary(df):
@@ -208,12 +188,12 @@ def get_data_summary(df):
 
 def executive_summary_tab():
     st.header("Executive Summary")
-    st.caption("📊 High-level business metrics and churn insights to guide strategic decisions")
+    st.caption("High-level business metrics and churn insights to guide strategic decisions")
     
     df = st.session_state.data
     
     # Business KPIs - Key metrics at a glance
-    st.subheader("📈 Key Business Metrics")
+    st.subheader("Key Business Metrics")
     
     # Get cached summary
     summary = get_data_summary(df)
@@ -252,7 +232,7 @@ def executive_summary_tab():
         )
     
     # ROI Calculator
-    st.subheader("💰 Retention Campaign ROI")
+    st.subheader("Retention Campaign ROI")
     
     col1, col2 = st.columns(2)
     
@@ -301,10 +281,10 @@ def executive_summary_tab():
             help="Total value saved minus campaign costs"
         )
     
-    st.caption("💡 Use this to estimate the business impact of your retention campaigns")
+    st.caption("Use this to estimate the business impact of your retention campaigns")
     
     # Business Insights
-    st.subheader("🎯 Key Business Insights")
+    st.subheader("Key Business Insights")
     
     insight_col1, insight_col2 = st.columns(2)
     
@@ -330,7 +310,7 @@ def executive_summary_tab():
     col1, col2 = st.columns(2)
     
     # Quick wins and action items
-    st.subheader("⚡ Quick Wins")
+    st.subheader("Quick Wins")
     
     quick_win_col1, quick_win_col2 = st.columns(2)
     
@@ -348,12 +328,12 @@ def executive_summary_tab():
         
 def data_quality_tab():
     st.header("Data & Quality")
-    st.caption("📋 Dataset overview, quality checks, and data governance information")
+    st.caption("Dataset overview, quality checks, and data governance information")
     
     df = st.session_state.data
     
     # Dataset Summary
-    st.subheader("📊 Dataset Summary")
+    st.subheader("Dataset Summary")
     
     summary_col1, summary_col2, summary_col3 = st.columns(3)
     
@@ -375,7 +355,7 @@ def data_quality_tab():
             st.metric("Missing Values", f"{missing_data:,}")
     
     # Contract Mix
-    st.subheader("📋 Customer Contract Mix")
+    st.subheader("Customer Contract Mix")
     contract_dist = df['Contract'].value_counts(normalize=True) * 100
     
     contract_col1, contract_col2, contract_col3 = st.columns(3)
@@ -393,7 +373,7 @@ def data_quality_tab():
         st.metric("Two Year", f"{two_year_pct:.1f}%", help="Lowest churn risk segment")
     
     # Data Governance
-    with st.expander("🔒 Data Governance & Quality", expanded=False):
+    with st.expander("Data Governance & Quality", expanded=False):
         col1, col2 = st.columns(2)
         
         with col1:
@@ -410,7 +390,7 @@ def data_quality_tab():
             st.success("✓ Cross-validation used")
             st.success("✓ Results reproducible")
     
-    st.caption("💡 This data quality enables reliable predictions for business decisions")
+    st.caption("This data quality enables reliable predictions for business decisions")
     
     # KPI Cards
     st.subheader("Key Performance Indicators")
@@ -419,12 +399,12 @@ def data_quality_tab():
     
 def segments_drivers_tab():
     st.header("Segments & Drivers")
-    st.caption("📊 Understand which customer segments are at risk and what drives churn behavior")
+    st.caption("Understand which customer segments are at risk and what drives churn behavior")
     
     df = st.session_state.data
     
     # Risky Customer Segments
-    st.subheader("🚨 Highest Risk Customer Segments")
+    st.subheader("Highest Risk Customer Segments")
     
     # Create Contract × Tenure bins analysis
     df_analysis = df.copy()
@@ -455,10 +435,10 @@ def segments_drivers_tab():
         }
     )
     
-    st.caption("💡 Use this to pick segments for targeted retention offers")
+    st.caption("Use this to pick segments for targeted retention offers")
     
     # Plain-English explanations
-    st.subheader("📝 What This Means for Your Business")
+    st.subheader("What This Means for Your Business")
     
     explanation_col1, explanation_col2 = st.columns(2)
     
@@ -482,7 +462,7 @@ def segments_drivers_tab():
     
 def retention_planner_tab():
     st.header("Retention Planner")
-    st.caption("🎯 Plan your retention campaigns with ROI optimization and customer targeting")
+    st.caption("Plan your retention campaigns with ROI optimization and customer targeting")
     
     df = st.session_state.data
     
@@ -529,7 +509,7 @@ def retention_planner_tab():
         )
     
     # Advanced Model Settings (Hidden)
-    with st.expander("⚙️ Advanced Model Settings", expanded=False):
+    with st.expander("Advanced Model Settings", expanded=False):
         model_choice = st.selectbox(
             "Model Selection",
             list(models.keys()),
@@ -563,7 +543,7 @@ def retention_planner_tab():
     roi_percentage = (net_roi / campaign_cost * 100) if campaign_cost > 0 else 0
     
     # Results Display
-    st.subheader("📊 Campaign Results")
+    st.subheader("Campaign Results")
     
     result_col1, result_col2, result_col3, result_col4 = st.columns(4)
     
@@ -603,15 +583,15 @@ def retention_planner_tab():
             help="Total cost divided by number of customers successfully retained"
         )
     
-    st.caption("💡 Adjust the retention aggressiveness to optimize your ROI and campaign efficiency")
+    st.caption("Adjust the retention aggressiveness to optimize your ROI and campaign efficiency")
     
     # Download options
-    st.subheader("📥 Export Campaign Data")
+    st.subheader("Export Campaign Data")
     
     export_col1, export_col2, export_col3 = st.columns(3)
     
     with export_col1:
-        if st.button("📊 Metrics & Settings", type="secondary"):
+        if st.button("Metrics & Settings", type="secondary"):
             metrics_data = {
                 "campaign_settings": {
                     "retention_aggressiveness": retention_aggressiveness,
@@ -638,7 +618,7 @@ def retention_planner_tab():
             )
     
     with export_col2:
-        if st.button("📈 Top Drivers", type="secondary"):
+        if st.button("Top Drivers", type="secondary"):
             # Create simplified feature importance data
             st.info("Feature importance export will be available after model interpretation in Details & Methods tab")
     
@@ -1262,6 +1242,183 @@ def insights_tab():
         
         **Cost-Optimal Threshold**: Decision threshold that minimizes expected business costs from false positives and false negatives
         """)
+
+def model_configuration_tab():
+    st.header("Model Configuration")
+    st.caption("Configure model training parameters and data filtering options")
+    
+    df = st.session_state.data
+    
+    # Data Filtering Section
+    st.subheader("Data Filtering")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Segment filter
+        segment_options = ['All Customers'] + list(df['Contract'].unique())
+        selected_segment = st.selectbox(
+            "Filter by Customer Segment",
+            segment_options,
+            key="segment_filter",
+            help="Train models on specific customer segments"
+        )
+    
+    with col2:
+        # Optional: Add more filters here
+        st.info("Additional filters can be configured here based on business needs")
+    
+    # Apply segment filter
+    if selected_segment != 'All Customers':
+        df_filtered = df[df['Contract'] == selected_segment]
+        st.info(f"Training will use: {selected_segment} customers ({len(df_filtered):,} records)")
+        st.session_state.selected_segment = selected_segment
+    else:
+        df_filtered = df
+        st.session_state.selected_segment = None
+    
+    # Model Configuration
+    st.subheader("Model Training Parameters")
+    
+    config_col1, config_col2 = st.columns(2)
+    
+    with config_col1:
+        selected_model = st.selectbox(
+            "Primary Model Type",
+            ["Logistic Regression", "Random Forest"],
+            help="Choose between Logistic Regression (interpretable) or Random Forest (higher accuracy)"
+        )
+        
+        use_smote = st.checkbox(
+            "Use SMOTE for Random Forest",
+            value=False,
+            help="Apply SMOTE to handle class imbalance for Random Forest models"
+        )
+    
+    with config_col2:
+        scoring_metric = st.selectbox(
+            "Primary Scoring Metric",
+            ["pr_auc", "roc_auc", "f1", "precision", "recall"],
+            help="Metric used to evaluate and select the best model"
+        )
+        
+        decision_threshold = st.slider(
+            "Decision Threshold",
+            min_value=0.1,
+            max_value=0.9,
+            value=0.5,
+            step=0.05,
+            help="Probability threshold for classification decisions"
+        )
+    
+    # Cost Analysis Parameters
+    st.subheader("Cost Analysis Parameters")
+    
+    cost_col1, cost_col2 = st.columns(2)
+    
+    with cost_col1:
+        cost_fp = st.number_input(
+            "Cost of False Positive",
+            min_value=1,
+            max_value=1000,
+            value=25,
+            help="Cost when model incorrectly predicts churn"
+        )
+    
+    with cost_col2:
+        cost_fn = st.number_input(
+            "Cost of False Negative", 
+            min_value=1,
+            max_value=1000,
+            value=150,
+            help="Cost when model misses actual churn"
+        )
+    
+    # Training Configuration Summary
+    st.subheader("Training Configuration Summary")
+    
+    config_summary = {
+        'Parameter': [
+            'Dataset Size',
+            'Selected Segment',
+            'Primary Model',
+            'SMOTE Enabled',
+            'Scoring Metric',
+            'Decision Threshold',
+            'False Positive Cost',
+            'False Negative Cost'
+        ],
+        'Value': [
+            f"{len(df_filtered):,} customers",
+            selected_segment,
+            selected_model,
+            "Yes" if use_smote else "No",
+            scoring_metric.upper(),
+            f"{decision_threshold:.2f}",
+            f"${cost_fp}",
+            f"${cost_fn}"
+        ]
+    }
+    
+    config_df = pd.DataFrame(config_summary)
+    st.dataframe(config_df, use_container_width=True, hide_index=True)
+    
+    # Train Models Button
+    if st.button("Train Models", type="primary", use_container_width=True):
+        with st.spinner("Training models... This may take a moment."):
+            # Preprocess data
+            X_train, X_test, y_train, y_test, preprocessor, feature_names = preprocess_data(df_filtered)
+            
+            # Train models
+            models, cv_results = train_models(
+                X_train, y_train, 
+                preprocessor, 
+                feature_names,
+                use_smote=use_smote
+            )
+            
+            # Store in session state
+            st.session_state.models = models
+            st.session_state.preprocessor = preprocessor
+            st.session_state.X_test = X_test
+            st.session_state.y_test = y_test
+            st.session_state.cv_results = cv_results
+            st.session_state.feature_names = feature_names
+            st.session_state.config_params = {
+                'selected_model': selected_model,
+                'use_smote': use_smote,
+                'scoring_metric': scoring_metric,
+                'decision_threshold': decision_threshold,
+                'cost_fp': cost_fp,
+                'cost_fn': cost_fn,
+                'selected_segment': selected_segment
+            }
+            
+        st.success("Models trained successfully! Navigate to other tabs to view results.")
+    
+    # Display training status
+    if st.session_state.models is not None:
+        st.success("Models are currently trained and ready for analysis")
+        
+        # Show quick model performance summary
+        if st.session_state.cv_results:
+            cv_df = pd.DataFrame(st.session_state.cv_results)
+            best_model = cv_df.loc[cv_df['PR_AUC'].idxmax()]
+            
+            performance_summary = {
+                'Metric': ['Best Model', 'PR-AUC Score', 'F1-Score', 'ROC-AUC Score'],
+                'Value': [
+                    best_model['Model'],
+                    f"{best_model['PR_AUC']:.3f}",
+                    f"{best_model['F1']:.3f}",
+                    f"{best_model['ROC_AUC']:.3f}"
+                ]
+            }
+            
+            perf_df = pd.DataFrame(performance_summary)
+            st.dataframe(perf_df, use_container_width=True, hide_index=True)
+    else:
+        st.warning("No models currently trained. Click 'Train Models' to begin analysis.")
 
 if __name__ == "__main__":
     main()

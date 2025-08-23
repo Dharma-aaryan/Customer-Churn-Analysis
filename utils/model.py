@@ -1,0 +1,330 @@
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import StratifiedKFold, cross_validate
+from sklearn.metrics import (
+    accuracy_score, precision_score, recall_score, f1_score,
+    roc_auc_score, average_precision_score, classification_report,
+    confusion_matrix, roc_curve, precision_recall_curve
+)
+from imblearn.over_sampling import SMOTE
+from imblearn.pipeline import Pipeline as ImbPipeline
+import warnings
+warnings.filterwarnings('ignore')
+
+def create_logistic_regression_pipeline(preprocessor):
+    """
+    Create a Logistic Regression pipeline with balanced class weights.
+    
+    Parameters:
+    preprocessor: sklearn ColumnTransformer
+    
+    Returns:
+    sklearn Pipeline
+    """
+    return Pipeline([
+        ('preprocessor', preprocessor),
+        ('classifier', LogisticRegression(
+            class_weight='balanced',
+            random_state=42,
+            max_iter=1000
+        ))
+    ])
+
+def create_random_forest_pipeline(preprocessor, use_smote=False):
+    """
+    Create a Random Forest pipeline with optional SMOTE.
+    
+    Parameters:
+    preprocessor: sklearn ColumnTransformer
+    use_smote: bool - whether to use SMOTE
+    
+    Returns:
+    sklearn Pipeline or imblearn Pipeline
+    """
+    if use_smote:
+        return ImbPipeline([
+            ('preprocessor', preprocessor),
+            ('smote', SMOTE(random_state=42)),
+            ('classifier', RandomForestClassifier(
+                n_estimators=100,
+                max_depth=10,
+                random_state=42,
+                n_jobs=-1
+            ))
+        ])
+    else:
+        return Pipeline([
+            ('preprocessor', preprocessor),
+            ('classifier', RandomForestClassifier(
+                n_estimators=100,
+                max_depth=10,
+                class_weight='balanced',
+                random_state=42,
+                n_jobs=-1
+            ))
+        ])
+
+def train_models(X_train, y_train, preprocessor, feature_names, use_smote=False):
+    """
+    Train multiple models and perform cross-validation.
+    
+    Parameters:
+    X_train: training features
+    y_train: training target
+    preprocessor: sklearn ColumnTransformer
+    feature_names: list of feature names
+    use_smote: bool - whether to use SMOTE for Random Forest
+    
+    Returns:
+    tuple: (models_dict, cv_results_df)
+    """
+    # Define models
+    models = {
+        'Logistic Regression': create_logistic_regression_pipeline(preprocessor),
+        'Random Forest': create_random_forest_pipeline(preprocessor, use_smote)
+    }
+    
+    # Cross-validation setup
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    
+    # Scoring metrics
+    scoring = {
+        'accuracy': 'accuracy',
+        'precision': 'precision',
+        'recall': 'recall',
+        'f1': 'f1',
+        'roc_auc': 'roc_auc',
+        'pr_auc': 'average_precision'
+    }
+    
+    # Store cross-validation results
+    cv_results = []
+    
+    # Train and evaluate each model
+    for name, model in models.items():
+        print(f"Training {name}...")
+        
+        # Perform cross-validation
+        cv_scores = cross_validate(
+            model, X_train, y_train,
+            cv=cv, scoring=scoring,
+            return_train_score=False,
+            n_jobs=-1
+        )
+        
+        # Calculate mean scores
+        result = {
+            'Model': name,
+            'Accuracy': cv_scores['test_accuracy'].mean(),
+            'Precision': cv_scores['test_precision'].mean(),
+            'Recall': cv_scores['test_recall'].mean(),
+            'F1': cv_scores['test_f1'].mean(),
+            'ROC_AUC': cv_scores['test_roc_auc'].mean(),
+            'PR_AUC': cv_scores['test_pr_auc'].mean()
+        }
+        
+        cv_results.append(result)
+        
+        # Fit the model on full training set
+        model.fit(X_train, y_train)
+    
+    cv_results_df = pd.DataFrame(cv_results)
+    
+    return models, cv_results_df
+
+def evaluate_model_at_threshold(model, X_test, y_test, threshold=0.5):
+    """
+    Evaluate model at a specific threshold.
+    
+    Parameters:
+    model: trained sklearn model
+    X_test: test features
+    y_test: test target
+    threshold: float - decision threshold
+    
+    Returns:
+    dict: evaluation metrics
+    """
+    # Get prediction probabilities
+    y_pred_proba = model.predict_proba(X_test)[:, 1]
+    
+    # Apply threshold
+    y_pred = (y_pred_proba >= threshold).astype(int)
+    
+    # Calculate metrics
+    metrics = {
+        'Accuracy': accuracy_score(y_test, y_pred),
+        'Precision': precision_score(y_test, y_pred, zero_division=0),
+        'Recall': recall_score(y_test, y_pred, zero_division=0),
+        'F1': f1_score(y_test, y_pred, zero_division=0),
+        'ROC_AUC': roc_auc_score(y_test, y_pred_proba),
+        'PR_AUC': average_precision_score(y_test, y_pred_proba),
+        'Threshold': threshold
+    }
+    
+    return metrics
+
+def get_confusion_matrix_data(model, X_test, y_test, threshold=0.5):
+    """
+    Get confusion matrix data for visualization.
+    
+    Parameters:
+    model: trained sklearn model
+    X_test: test features
+    y_test: test target
+    threshold: float - decision threshold
+    
+    Returns:
+    numpy.ndarray: confusion matrix
+    """
+    y_pred_proba = model.predict_proba(X_test)[:, 1]
+    y_pred = (y_pred_proba >= threshold).astype(int)
+    
+    return confusion_matrix(y_test, y_pred)
+
+def get_roc_curve_data(model, X_test, y_test):
+    """
+    Get ROC curve data for visualization.
+    
+    Parameters:
+    model: trained sklearn model
+    X_test: test features
+    y_test: test target
+    
+    Returns:
+    tuple: (fpr, tpr, auc_score)
+    """
+    y_pred_proba = model.predict_proba(X_test)[:, 1]
+    fpr, tpr, _ = roc_curve(y_test, y_pred_proba)
+    auc_score = roc_auc_score(y_test, y_pred_proba)
+    
+    return fpr, tpr, auc_score
+
+def get_pr_curve_data(model, X_test, y_test):
+    """
+    Get Precision-Recall curve data for visualization.
+    
+    Parameters:
+    model: trained sklearn model
+    X_test: test features
+    y_test: test target
+    
+    Returns:
+    tuple: (precision, recall, auc_score)
+    """
+    y_pred_proba = model.predict_proba(X_test)[:, 1]
+    precision, recall, _ = precision_recall_curve(y_test, y_pred_proba)
+    auc_score = average_precision_score(y_test, y_pred_proba)
+    
+    return precision, recall, auc_score
+
+def get_feature_importance(model, feature_names, model_name):
+    """
+    Extract feature importance from trained model.
+    
+    Parameters:
+    model: trained sklearn model
+    feature_names: list of feature names
+    model_name: str - name of the model
+    
+    Returns:
+    pandas DataFrame: feature importance
+    """
+    try:
+        classifier = model.named_steps['classifier']
+        
+        if 'Logistic' in model_name:
+            # For logistic regression, use absolute coefficients
+            importance = np.abs(classifier.coef_[0])
+        elif 'Random Forest' in model_name:
+            # For random forest, use feature importances
+            importance = classifier.feature_importances_
+        else:
+            # Fallback
+            importance = np.ones(len(feature_names))
+        
+        # Create DataFrame
+        importance_df = pd.DataFrame({
+            'Feature': feature_names,
+            'Importance': importance
+        }).sort_values('Importance', ascending=False)
+        
+        return importance_df
+        
+    except Exception as e:
+        print(f"Error extracting feature importance: {e}")
+        return pd.DataFrame({'Feature': feature_names, 'Importance': np.ones(len(feature_names))})
+
+def get_best_model(cv_results_df, metric='PR_AUC'):
+    """
+    Get the best model based on CV results.
+    
+    Parameters:
+    cv_results_df: pandas DataFrame with CV results
+    metric: str - metric to optimize
+    
+    Returns:
+    str: name of best model
+    """
+    best_idx = cv_results_df[metric].idxmax()
+    return cv_results_df.loc[best_idx, 'Model']
+
+def export_predictions(model, X_test, y_test):
+    """
+    Export predictions for download.
+    
+    Parameters:
+    model: trained sklearn model
+    X_test: test features
+    y_test: test target
+    
+    Returns:
+    pandas DataFrame: predictions with probabilities
+    """
+    y_pred_proba = model.predict_proba(X_test)[:, 1]
+    y_pred = model.predict(X_test)
+    
+    predictions_df = pd.DataFrame({
+        'Actual': y_test.values,
+        'Predicted': y_pred,
+        'Probability_Churn': y_pred_proba,
+        'Probability_No_Churn': 1 - y_pred_proba
+    })
+    
+    return predictions_df
+
+def calculate_threshold_metrics(model, X_test, y_test, thresholds=None):
+    """
+    Calculate metrics across different thresholds.
+    
+    Parameters:
+    model: trained sklearn model
+    X_test: test features
+    y_test: test target
+    thresholds: list of thresholds to evaluate
+    
+    Returns:
+    pandas DataFrame: metrics at different thresholds
+    """
+    if thresholds is None:
+        thresholds = np.arange(0.1, 1.0, 0.1)
+    
+    results = []
+    y_pred_proba = model.predict_proba(X_test)[:, 1]
+    
+    for threshold in thresholds:
+        y_pred = (y_pred_proba >= threshold).astype(int)
+        
+        result = {
+            'Threshold': threshold,
+            'Accuracy': accuracy_score(y_test, y_pred),
+            'Precision': precision_score(y_test, y_pred, zero_division=0),
+            'Recall': recall_score(y_test, y_pred, zero_division=0),
+            'F1': f1_score(y_test, y_pred, zero_division=0)
+        }
+        results.append(result)
+    
+    return pd.DataFrame(results)

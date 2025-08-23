@@ -15,6 +15,27 @@ st.set_page_config(
     layout="wide"
 )
 
+# Header with download button
+header_col1, header_col2 = st.columns([3, 1])
+with header_col1:
+    st.title("Churn Insights Dashboard")
+    st.caption("Machine learning powered customer retention analytics")
+
+with header_col2:
+    # Dataset download button
+    try:
+        df_sample = pd.read_csv('WA_Fn-UseC_-Telco-Customer-Churn.csv')
+        csv_data = df_sample.to_csv(index=False)
+        st.download_button(
+            label="Download Dataset",
+            data=csv_data,
+            file_name="telco_customer_churn_dataset.csv",
+            mime="text/csv",
+            help="Download the complete Telco Customer Churn dataset"
+        )
+    except Exception as e:
+        st.caption("Dataset download unavailable")
+
 # Custom CSS for styled metric boxes
 st.markdown("""
 <style>
@@ -81,7 +102,6 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 def main():
-    st.title("Churn Insights Dashboard")
     
     # Initialize session state
     if 'data' not in st.session_state:
@@ -740,7 +760,7 @@ These numbers show how many customers we could save and how much money that migh
                             "offer_cost": float(offer_cost_export),
                             "net_roi": float(net_roi_export),
                             "roi_pct": float(roi_pct_export),
-                            "metrics": {k: float(v) for k, v in cv_df.iloc[0].to_dict().items()} if len(cv_df) > 0 else {},
+                            "metrics": {k: float(v) for k, v in cv_df.iloc[0].to_dict().items() if isinstance(v, (int, float, np.number))} if len(cv_df) > 0 else {},
                             "rows": int(len(df_display)) if 'df_display' in locals() else None
                         }
                         

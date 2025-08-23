@@ -134,13 +134,18 @@ def main():
             
             segment_filter = st.selectbox(
                 "Customer Segment",
-                ['All Customers', 'Month-to-month', 'One year', 'Two year'],
-                index=['All Customers', 'Month-to-month', 'One year', 'Two year'].index(st.session_state.settings['segment_filter'])
+                ['All Customers', 'Month-to-month'],
+                index=['All Customers', 'Month-to-month'].index(st.session_state.settings['segment_filter']) if st.session_state.settings['segment_filter'] in ['All Customers', 'Month-to-month'] else 0
             )
             
             apply_changes = st.form_submit_button("Apply Settings", type="primary")
             
             if apply_changes:
+                # Clear models if segment changed to prevent mismatched predictions
+                if st.session_state.settings['segment_filter'] != segment_filter:
+                    st.session_state.models = None
+                    st.session_state.cv_results = None
+                    
                 st.session_state.settings.update({
                     'retention_aggressiveness': retention_aggressiveness,
                     'cost_per_contact': cost_per_contact,
@@ -270,8 +275,12 @@ def main():
         
         contacts = at_risk_customers
         cost = contacts * settings['cost_per_contact']
-        saved = int(contacts * 0.3 * settings['value_saved_per_customer'])
-        roi = ((saved - cost) / cost * 100) if cost > 0 else 0
+        # More realistic ROI calculation: assume 20% success rate and only count net value
+        retention_success_rate = 0.2
+        customers_saved = int(contacts * retention_success_rate)
+        revenue_saved = customers_saved * settings['value_saved_per_customer']
+        net_profit = revenue_saved - cost
+        roi = (net_profit / cost * 100) if cost > 0 else 0
         
         roi_col1, roi_col2, roi_col3, roi_col4 = st.columns(4)
         
@@ -296,9 +305,9 @@ def main():
         with roi_col3:
             st.markdown(f"""
             <div class="metric-container">
-                <div class="metric-title">${saved:,}</div>
+                <div class="metric-title">${revenue_saved:,}</div>
                 <div class="metric-subtitle">Expected Revenue Saved</div>
-                <div class="metric-description">Projected revenue retention based on 30% campaign success rate. Conservative estimate ensuring realistic business planning and budget allocation.</div>
+                <div class="metric-description">Projected revenue retention based on 20% campaign success rate. Conservative estimate ensuring realistic business planning and budget allocation.</div>
             </div>
             """, unsafe_allow_html=True)
         
@@ -313,7 +322,7 @@ def main():
         
         st.markdown("""
         <div class="insight-box">
-            <strong>Business Insight:</strong> ROI analysis assumes 30% retention campaign success rate based on industry benchmarks. 
+            <strong>Business Insight:</strong> ROI analysis assumes 20% retention campaign success rate based on conservative industry benchmarks. 
             Actual results may vary based on offer attractiveness, customer segment, and execution quality.
         </div>
         """, unsafe_allow_html=True)
@@ -392,7 +401,7 @@ def main():
                     <li><strong>Customer Satisfaction:</strong> Improved Net Promoter Score</li>
                     <li><strong>Operational Efficiency:</strong> Better resource allocation and planning</li>
                 </ul>
-                <p><em>ROI: 300-500% return within 6 months</em></p>
+                <p><em>ROI: 50-150% return within 6 months</em></p>
             </div>
             """, unsafe_allow_html=True)
     
@@ -418,9 +427,14 @@ def main():
                 X_test = st.session_state.X_test
                 y_test = st.session_state.y_test
                 
+                # Validate all required data exists
+                if models is None or X_test is None or y_test is None:
+                    st.error("Model data is incomplete. Please retrain models.")
+                    st.stop()
+                
                 # Get predictions with error handling
                 best_model_name = get_best_model(st.session_state.cv_results)
-                if best_model_name not in models:
+                if best_model_name is None or best_model_name not in models:
                     st.error(f"Model '{best_model_name}' not found in trained models.")
                     st.stop()
                     
@@ -430,12 +444,15 @@ def main():
                 threshold = settings['retention_aggressiveness']
                 y_pred = (y_proba >= threshold).astype(int)
                 
-                # Calculate business metrics
+                # Calculate business metrics with realistic assumptions
                 customers_contacted = np.sum(y_pred)
                 true_positives = np.sum((y_pred == 1) & (y_test == 1))
                 
                 campaign_cost = customers_contacted * settings['cost_per_contact']
-                value_generated = true_positives * settings['value_saved_per_customer']
+                # More conservative calculation: only count actual prevented churn
+                actual_retention_rate = 0.15  # 15% of contacted at-risk customers are retained
+                customers_retained = int(customers_contacted * actual_retention_rate)
+                value_generated = customers_retained * (settings['value_saved_per_customer'] * 0.7)  # Only 70% of customer value is recoverable
                 net_roi = value_generated - campaign_cost
                 roi_percentage = (net_roi / campaign_cost * 100) if campaign_cost > 0 else 0
                 
@@ -455,9 +472,9 @@ def main():
                 with perf_col2:
                     st.markdown(f"""
                     <div class="metric-container">
-                        <div class="metric-title">{true_positives:,}</div>
+                        <div class="metric-title">{customers_retained:,}</div>
                         <div class="metric-subtitle">Expected Saves</div>
-                        <div class="metric-description">Predicted successful retentions from targeted outreach. Based on model accuracy and historical retention campaign performance.</div>
+                        <div class="metric-description">Realistic successful retentions from targeted outreach (15% success rate). Based on conservative industry benchmarks for retention campaigns.</div>
                     </div>
                     """, unsafe_allow_html=True)
                 
@@ -483,7 +500,7 @@ def main():
                 st.subheader("Campaign Efficiency")
                 
                 precision = true_positives / customers_contacted if customers_contacted > 0 else 0
-                cost_per_save = campaign_cost / true_positives if true_positives > 0 else float('inf')
+                cost_per_save = campaign_cost / customers_retained if customers_retained > 0 else float('inf')
                 
                 eff_col1, eff_col2 = st.columns(2)
                 

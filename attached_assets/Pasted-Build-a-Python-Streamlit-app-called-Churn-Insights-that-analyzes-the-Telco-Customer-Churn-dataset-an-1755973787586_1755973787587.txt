@@ -1,0 +1,165 @@
+Build a Python Streamlit app called Churn Insights that analyzes the Telco Customer Churn dataset and produces a polished, multi-tab dashboard. The app must (1) run end-to-end on first launch, (2) allow a CSV upload OR use a default local file WA_Fn-UseC_-Telco-Customer-Churn.csv, (3) explain the methods and metrics used, and (4) show key findings with charts and clear text.
+
+Tech stack
+
+Python 3.11+
+
+streamlit
+
+pandas, numpy, scipy
+
+scikit-learn
+
+matplotlib, plotly
+
+shap (optional but preferred)
+
+imbalanced-learn (for SMOTE)
+Create a requirements.txt with the above.
+
+Data & preprocessing
+
+Expect standard Telco columns (e.g., customerID, gender, SeniorCitizen, Partner, Dependents, tenure, PhoneService, MultipleLines, InternetService, OnlineSecurity, OnlineBackup, DeviceProtection, TechSupport, StreamingTV, StreamingMovies, Contract, PaperlessBilling, PaymentMethod, MonthlyCharges, TotalCharges, Churn).
+
+Clean steps (and explain them in the UI):
+
+Drop customerID.
+
+Coerce TotalCharges to numeric; handle blanks as NaN then impute (median).
+
+Split columns into categorical vs numerical automatically.
+
+Train/test split with stratification (test_size=0.2, random_state=42).
+
+Build an sklearn Pipeline with ColumnTransformer: OneHotEncoder for categoricals, StandardScaler for numeric features (do NOT scale target).
+
+Handle class imbalance by either class_weight='balanced' for linear models or SMOTE inside CV for tree-based models; explain the choice.
+
+Modeling
+
+Train at least two models and compare:
+
+Logistic Regression (with class_weight='balanced')
+
+RandomForestClassifier (use reasonable defaults; tune n_estimators, max_depth lightly)
+
+Use StratifiedKFold(5) cross-validation on the pipeline.
+
+Report metrics on both CV and held-out test set:
+
+Accuracy, Precision, Recall, F1
+
+ROC-AUC and PR-AUC (explain why PR-AUC matters on imbalanced data)
+
+Show:
+
+Confusion matrix (test)
+
+ROC curve (test)
+
+Precision-Recall curve (test)
+
+Calibration curve (optional)
+
+Pick and highlight a default best model by test PR-AUC (tie-break by ROC-AUC).
+
+Explainability
+
+Show feature importance:
+
+For Logistic Regression: coefficient table (after inverse-transforming one-hot names), with sign interpretation.
+
+For Random Forest: permutation importance (preferred) or .feature_importances_.
+
+If shap available: display SHAP summary plot; otherwise skip gracefully with a note.
+
+Provide plain-English explanations below each plot (“what this means” in 2–4 bullets).
+
+Dashboard pages (Streamlit tabs or sidebar nav)
+
+Overview
+
+Dataset snapshot (rows, cols, churn rate, missingness table).
+
+“Key questions” box: Who churns? Which factors drive churn? How well can we predict churn?
+
+KPI cards: churn rate %, avg tenure, avg MonthlyCharges, % by contract type.
+
+Explore Data
+
+Interactive univariate and bivariate EDA:
+
+Histograms for numeric (tenure, MonthlyCharges, TotalCharges).
+
+Bar charts for categoricals vs churn rate (Contract, InternetService, PaymentMethod, SeniorCitizen).
+
+Cohort-style view: churn rate by Contract and tenure bins.
+
+Each chart includes a short “What to look for” note.
+
+Modeling
+
+Sidebar controls: pick model (LogReg vs RandomForest), toggle SMOTE, select scoring metric.
+
+Show CV metrics table and test metrics (Accuracy, Precision, Recall, F1, ROC-AUC, PR-AUC).
+
+Confusion matrix, ROC, PR curves with one-line explanations of each metric and why it matters.
+
+Explainability
+
+Top features (table + bar chart).
+
+If SHAP available, add SHAP summary plot and 2–3 insights (e.g., “Month-to-Month contracts and higher MonthlyCharges increase churn risk”).
+
+What We Learned
+
+Auto-generated narrative bullets summarizing:
+
+Key segments at risk (e.g., Month-to-Month, Fiber optic internet, higher MonthlyCharges, shorter tenure).
+
+Actionable levers (e.g., retention offers for high-risk segments, push longer-term contracts).
+
+Best model, metric highlights (e.g., “RandomForest achieved PR-AUC 0.61; Recall 0.72 at threshold 0.35”).
+
+Brief glossary: ROC-AUC, PR-AUC, Recall, Precision, F1, SMOTE, One-Hot Encoding, Pipeline.
+
+UX details
+
+Clean, modern layout with clear section headers and short helper text under each component.
+
+All plots should render even on small screens; use Plotly for interactivity where practical.
+
+Include a download button to export:
+
+Metrics report (metrics.json)
+
+Feature importance table (feature_importance.csv)
+
+Scored test set with predicted probabilities (predictions.csv)
+
+Add a file uploader at the top; if no file uploaded, auto-load the default CSV.
+
+Code structure
+
+app.py (Streamlit entry)
+
+utils/data.py (load/clean/split functions)
+
+utils/model.py (build pipelines, train/evaluate, plots)
+
+utils/viz.py (EDA charts)
+
+requirements.txt
+Ensure everything runs with streamlit run app.py.
+
+Acceptance criteria (must have)
+
+App boots with default dataset and shows all pages.
+
+Clear textual explanations of how findings were produced (methods + metrics).
+
+Both models trained via sklearn Pipeline + ColumnTransformer, with reproducible splits.
+
+Metrics displayed for CV and test, plus confusion matrix + ROC + PR curves.
+
+A final “What We Learned” page summarizing insights in business terms.

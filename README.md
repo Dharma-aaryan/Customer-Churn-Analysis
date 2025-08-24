@@ -1,97 +1,94 @@
 📊 Churn Insights Dashboard
 
-An interactive Streamlit-based Machine Learning dashboard that analyzes telecom customer churn, provides business-focused insights, and supports retention decision-making with ROI calculations.
+An interactive Streamlit-based Machine Learning dashboard designed to analyze telecom customer churn, surface actionable business insights, and simulate retention strategies with ROI calculations.
 
-This project takes the popular Telco Customer Churn dataset and demonstrates how to build a complete analytics and modeling pipeline — from data preprocessing and ML training to explainability and business ROI simulation — all wrapped in a clean, user-friendly interface.
+This project transforms raw customer data into a decision-support tool that speaks directly to both business leaders and data practitioners, combining statistical rigor with clear storytelling.
 
-🚀 Features
+🚀 Key Features
 🔍 Executive Summary
 
-KPI cards: Churn rate, Customers at risk, Potential customers saved, Estimated savings, ROI %
+KPI cards for Churn Rate, Customers at Risk, Potential Customers Saved, Estimated Savings, ROI %
 
-High-level snapshot of dataset size, quality, and churn baseline
+One-click snapshot of overall churn health and business impact
 
 🧩 Segments & Drivers
 
-Identifies high-risk customer segments (e.g., contract type × tenure bins)
+Identifies high-risk customer groups (e.g., contract type × tenure bins)
 
-Highlights top churn drivers with plain-English explanations (↑ increases churn risk, ↓ lowers churn risk)
+Highlights top churn drivers in plain English (↑ increases risk, ↓ decreases risk)
 
-Visual segment-level churn rates for targeted retention strategies
+Explains “why churn happens” with model coefficients and feature importance
 
 🛠 Retention Planner
 
-Retention aggressiveness slider (τ) → adjust decision threshold
+Retention aggressiveness slider (τ): adjust how many customers are flagged at risk
 
-Business inputs: cost per contact, value saved per customer
+Business inputs: cost per contact, value saved per churn prevented
 
-Outputs: Churners saved, Contacts sent, Offer cost, Net ROI, ROI %
+Outputs: Churners Saved, Contacts Sent, Offer Cost, Net ROI, ROI %
 
-Advanced controls (model choice, SMOTE) hidden in an Advanced panel
+ROI explainer panel clarifies assumptions and why ROI % can appear very high
 
-Clear ROI explanation and assumptions surfaced directly in the UI
+Advanced controls (model choice, SMOTE) available in an optional expander
 
 📈 Details & Methods
 
-Model evaluation metrics: Accuracy, Precision, Recall, F1, ROC-AUC, PR-AUC
+Full model evaluation: Accuracy, Precision, Recall, F1, ROC-AUC, PR-AUC
 
 Confusion matrix, ROC curve, Precision–Recall curve
 
-Glossary of metrics in simple terms for non-technical users
+Glossary of metrics explained in simple terms
 
 📂 Data & Quality
 
-Dataset overview: row/column counts, missing values
+Dataset overview: size, missing values, and contract type distribution
 
-Distribution of contract types and other key categorical features
-
-⚙️ Tech Stack
-
-Python 3.10+
-
-Streamlit
- – interactive UI framework
-
-Pandas / NumPy – data wrangling
-
-Scikit-learn – preprocessing & ML models (Logistic Regression, Random Forest)
-
-Imbalanced-learn (SMOTE) – class imbalance handling
-
-Matplotlib / Plotly – visualizations
-
-SHAP – model explainability (optional)
+Ensures transparency and trust in the inputs driving predictions
 
 📊 ROI Assumptions
 
-ROI metrics in the dashboard are scenario-based and depend heavily on assumptions:
+ROI is scenario-based and depends heavily on user inputs:
 
-Cost per contact: cost of reaching one customer with an offer
+Cost per contact: expense of reaching one customer
 
-Value saved per churn prevented: estimated value if one churner stays
+Value saved per churn prevented: revenue preserved if a churner stays
 
-Retention aggressiveness (τ): threshold for flagging customers at risk
+Retention aggressiveness (τ): decision threshold for flagging at-risk customers
 
-Formula:
+Formulas:
 
 Offer cost = Contacts × Cost per contact
 
-Savings = Churners saved × Value saved
+Savings = Churners Saved × Value saved
 
 Net ROI = Savings − Offer cost
 
 ROI % = (Net ROI ÷ Offer cost) × 100
 
-⚠️ ROI % can look very high if value saved ≫ contact cost. Treat ROI as directional — real-world campaigns include fixed costs, acceptance rates, and long-term effects.
+⚠️ ROI % can look very high when value saved ≫ contact cost. This is mathematically correct but should be treated as directional guidance rather than a guarantee. Real campaigns also consider overhead, offer uptake rates, and long-term customer behavior.
 
 📈 Example Insights
 
-Customers on month-to-month contracts with short tenure and higher monthly charges are most at risk.
+Month-to-month contracts with short tenure and higher monthly charges drive the highest churn.
 
-Moving at-risk customers to longer-term contracts may significantly reduce churn.
+Transitioning customers to longer-term contracts significantly reduces churn risk.
 
-With current assumptions, retention campaigns show positive ROI even with moderate false positives.
+Even conservative assumptions show positive ROI for targeted retention campaigns.
+
+⚙️ Tech Stack
+
+Streamlit – interactive app framework
+
+Pandas / NumPy – data wrangling
+
+Scikit-learn – ML models (Logistic Regression, Random Forest)
+
+Imbalanced-learn (SMOTE) – class imbalance handling
+
+Matplotlib / Plotly – charts & visualizations
+
+SHAP – model explainability (optional)
 
 🤝 Contributing
 
-Pull requests are welcome! For major changes, please open an issue first to discuss what you’d like to change.
+Contributions are welcome! Feel free to fork the repo and submit a pull request.

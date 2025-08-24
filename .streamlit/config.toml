@@ -8,7 +8,7 @@ textColor = "#fafafa"
 [server]
 headless = true
 address = "0.0.0.0"
-port = 5000
+port = 3000
 
 [browser]
 gatherUsageStats = false

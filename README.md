@@ -23,7 +23,7 @@
 | Imbalance Handling | Imbalanced-learn (SMOTE)                |  
 | Data Wrangling     | Pandas, NumPy                           |  
 | Visualization      | Matplotlib, Plotly                      |  
-| Explainability     | SHAP (optional)                         |  
+| Explainability     | SHAP                                    |
 
 ---
 
